@@ -1,7 +1,5 @@
 import curses
-from dataclasses import dataclass
 import time
-from typing import Callable
 from tetris_class import Tetris
 
 
@@ -12,7 +10,7 @@ def main_loop(stdscr: curses.window):
         
     i = 0
     g = Tetris([(0,0), (0,1), (1,0), (1,1)], 
-               [[(0,0), (0,1), (1,0), (1,1)]],
+               1,
                stdscr)
     # * loop 
     while True:
@@ -23,9 +21,11 @@ def main_loop(stdscr: curses.window):
         if c == 97: g.update(g.move_left)
         if c == 100: g.update(g.move_right)
         
+        if c == 115: g.update(g.turn_right)
+        
         # * natural block falling
         i += 1
-        if i == 60:
+        if i == 50:
             g.update(g.fall)
             i = 0
         time.sleep(0.01)
