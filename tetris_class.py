@@ -19,19 +19,23 @@ class Tetris:
         return list(di.items())
     # * these methods take self.coords and return and new set of coords
     def fall(self):
+        self.pivot_point = self.pivot_point[0], self.pivot_point[1]+1
         return [(x,y+1) for (x,y) in self.coords]
         
     def move_left(self):
+        self.pivot_point = self.pivot_point[0]-1, self.pivot_point[1]
         return [(x-1,y) for (x,y) in self.coords]
     
     def move_right(self):
+        self.pivot_point = self.pivot_point[0]+1, self.pivot_point[1]
         return [(x+1,y) for (x,y) in self.coords]
 
-    def turn(self, radians):
+    def turn(self, direction):
+        radians = 1.57079632679 if direction == "left" else -1.57079632679
         cos_theta = cos(radians) #for calculations
         sin_theta = sin(radians)
         
-        (pivot_x, pivot_y) = self.coords[self.pivot_point]
+        (pivot_x, pivot_y) = self.pivot_point
         
         new_coords = []
         for (x,y) in self.coords:
@@ -39,31 +43,24 @@ class Tetris:
             new_x = cos_theta * (x - pivot_x) - sin_theta * (y - pivot_y) + pivot_x
             new_y = sin_theta * (x - pivot_x) + cos_theta * (y - pivot_y) + pivot_y
             new_coords.append((round(new_x), round(new_y)))
-            
         return new_coords
     
-    
-    def print(self):
-        ...
     def update(self, update_func: Callable[[], list]):
         # * deletes previous block
-        for x, ys in sorted(Tetris.convert(self.coords)):
-            first_x = sorted(Tetris.convert(self.coords))[0][0]
-            for y in ys:
-                self.screen.addstr(y, first_x + (x-first_x)*2, "  ")
+        for x, y in self.coords:
+            self.screen.addstr(y, x*2, "  ")
 
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_RED)
         new_coords = update_func() 
         # * add in new coords
-        for x, ys in sorted(Tetris.convert(new_coords)):
-            first_x = sorted(Tetris.convert(new_coords))[0][0]
-            for y in ys:
-                self.screen.addstr(y, first_x + (x-first_x)*2, "  ", curses.color_pair(1))
+        for x, y in new_coords:
+            self.screen.addstr(y, x*2, "  ", curses.color_pair(1))
             
         self.coords = new_coords
 
-g = Tetris([(10,10), (10,11), (10, 12), (11, 12)], 
-               1,
+g = Tetris([(10,10), (10,11), (10, 12), (10, 13)], 
+               (10.5, 11.5),
                curses.initscr())
+
 
 
