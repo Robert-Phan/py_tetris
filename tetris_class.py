@@ -1,6 +1,7 @@
 import curses
 from dataclasses import dataclass
 from math import cos, sin
+import time
 from typing import Callable
 
 @dataclass
@@ -9,6 +10,7 @@ class Tetris:
     coords: list[tuple]
     pivot_point: int #pivot
     screen: curses.window
+    color: int
     
     @staticmethod
     # * Converts coordinates into x-as-key dicts
@@ -49,18 +51,13 @@ class Tetris:
         # * deletes previous block
         for x, y in self.coords:
             self.screen.addstr(y, x*2, "  ")
-
-        curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_RED)
+        
         new_coords = update_func() 
         # * add in new coords
         for x, y in new_coords:
-            self.screen.addstr(y, x*2, "  ", curses.color_pair(1))
+            self.screen.addstr(y, x*2, "  ", curses.color_pair(self.color))
             
         self.coords = new_coords
-
-g = Tetris([(10,10), (10,11), (10, 12), (10, 13)], 
-               (10.5, 11.5),
-               curses.initscr())
 
 
 
