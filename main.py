@@ -4,6 +4,7 @@ import random
 from tetris_class import Tetris, forbidden
 
 def init_color():
+    """Adds colors and color pairs"""
     def init_color_and_pair(number: int, r: int, g: int, b: int):
         curses.init_color(number, r, g, b)
         curses.init_pair(number, curses.COLOR_BLACK, number)
@@ -17,6 +18,7 @@ def init_color():
 
 
 def main_loop(stdscr: curses.window):
+    """The main loop."""
     curses.curs_set(0)
     max_y, max_x = stdscr.getmaxyx()
     screen = curses.newpad(max_y+2, max_x)
@@ -27,7 +29,7 @@ def main_loop(stdscr: curses.window):
     forbidden.update({(max_x // 2, y) for y in range(max_y+2)})
 
     def spawn_block():
-        """Creates a new block"""
+        """Selects a random template for a block, returns new block."""
         templates = [
             ([(0,1), (1,1), (2,1), (2,0)], (1, 1), 50),     #orange L-shape
             ([(0,1), (1,1), (2,1), (0,0)], (1, 1), 51),     #blue L-shape
@@ -45,7 +47,15 @@ def main_loop(stdscr: curses.window):
         return g
     
     init_color() # initiates color for the tetris pieces
+    
     def fall(block: Tetris):
+        """
+        Function for falling block.
+        
+        If the block hits a forbidden place 
+        (indicated by a returned `True` from the `update` method),
+        it will create and return a new block, and update the `forbidden` set
+        """
         if block.update(block.fall):
             forbidden.update(set(block.coords))
             new_block = spawn_block()
@@ -63,9 +73,9 @@ def main_loop(stdscr: curses.window):
         if c == 3: break # Ctrl + c == break
         # * controls
         if c == 115: block = fall(block)
-        if c == 97:  block.update(block.move_left)
-        if c == 100: block.update(block.move_right)
-
+        
+        if c == 97:  block.update(lambda: block.shift("left"))
+        if c == 100: block.update(lambda: block.shift("right"))
         if c == 106: block.update(lambda: block.turn("left"))  #left turn
         if c == 108: block.update(lambda: block.turn("right")) #right turn
         
