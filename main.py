@@ -1,7 +1,7 @@
 import curses
 import time
 import random
-from tetris_class import Tetris
+from tetris_class import Tetris, forbidden
 
 def init_color():
     def init_color_and_pair(number: int, r: int, g: int, b: int):
@@ -15,50 +15,64 @@ def init_color():
     init_color_and_pair(55, 0, 1000, 1000)
     init_color_and_pair(56, 600, 0, 800)
 
-def spawn_block(screen: curses.window):
-    templates = [
-        ([(0,1), (1,1), (2,1), (2,0)], (1, 1), 50),     #orange L-shape
-        ([(0,1), (1,1), (2,1), (0,0)], (1, 1), 51),     #blue L-shape
-        ([(0,0), (1,0), (1,1), (2,1)], (1, 1), 52),     #red lightning
-        ([(0,1), (1,1), (1,0), (2,0)], (1,1), 53),      #green lightning
-        ([(0,0), (0,1), (1,0), (1,1)], (0.5, 0.5), 54), #cube
-        ([(0,1), (1,1), (2,1), (3,1)], (1.5, 0.5), 55), #long
-        ([(0,0), (1,0), (2,0), (1,1)], (1, 0), 56)      #T-shape
-    ]
-    shape, pivot, color = random.choice(templates)
-    g = Tetris(shape, 
-               pivot,
-               screen, 
-               color)
-    # g.update(lambda: g.coords)
-    return g
 
 def main_loop(stdscr: curses.window):
     curses.curs_set(0)
-    stdscr_y, stdscr_x = stdscr.getmaxyx()
-    screen = curses.newpad(stdscr_y+2, stdscr_x)
+    max_y, max_x = stdscr.getmaxyx()
+    screen = curses.newpad(max_y+2, max_x)
     screen.nodelay(True)
+    
+    forbidden.update({(x, max_y+2) for x in range(max_x)})
+    forbidden.update({(-1, y) for y in range(max_y+2)})
+    forbidden.update({(max_x // 2, y) for y in range(max_y+2)})
 
+    def spawn_block():
+        """Creates a new block"""
+        templates = [
+            ([(0,1), (1,1), (2,1), (2,0)], (1, 1), 50),     #orange L-shape
+            ([(0,1), (1,1), (2,1), (0,0)], (1, 1), 51),     #blue L-shape
+            ([(0,0), (1,0), (1,1), (2,1)], (1, 1), 52),     #red lightning
+            ([(0,1), (1,1), (1,0), (2,0)], (1,1), 53),      #green lightning
+            ([(0,0), (0,1), (1,0), (1,1)], (0.5, 0.5), 54), #cube
+            ([(0,1), (1,1), (2,1), (3,1)], (1.5, 0.5), 55), #long
+            ([(0,0), (1,0), (2,0), (1,1)], (1, 0), 56)      #T-shape
+        ]
+        shape, pivot, color = random.choice(templates)
+        g = Tetris(shape, 
+                   pivot,
+                   screen, 
+                   color)
+        return g
+    
     init_color() # initiates color for the tetris pieces
-
-    block = spawn_block(screen)
+    def fall(block: Tetris):
+        if block.update(block.fall):
+            forbidden.update(set(block.coords))
+            new_block = spawn_block()
+            new_block.update(new_block.fall)
+            return new_block
+        else:
+            return block
+    
+    block = spawn_block()
     i = 0
     # * loop 
     while True:
-        screen.refresh(2, 0, 0, 0, stdscr_y-1, stdscr_x-1)
+        screen.refresh(2, 0, 0, 0, max_y-1, max_x-1)
         c = screen.getch()
         if c == 3: break # Ctrl + c == break
         # * controls
+        if c == 115: block = fall(block)
         if c == 97:  block.update(block.move_left)
         if c == 100: block.update(block.move_right)
-        if c == 115: block.update(block.fall)
+
         if c == 106: block.update(lambda: block.turn("left"))  #left turn
         if c == 108: block.update(lambda: block.turn("right")) #right turn
         
         # * natural block falling
         i += 1
-        if i == 55:
-            block.update(block.fall)
+        if i == 55: 
+            block = fall(block)
             i = 0
         time.sleep(0.01)
 
