@@ -52,17 +52,18 @@ def main_loop(stdscr: curses.window):
         """
         Function for falling block.
         
-        If the block hits a forbidden place 
-        (indicated by a returned `True` from the `update` method),
-        it will create and return a new block, and update the `forbidden` set
+        `block.fall` is decorated, so by default will return `None`. In that case, it returns False.
+        
+        In the case that `block.fall` returns True, representing it hit another block/the floor,
+        the block's coords will be added to `forbidden`, and a new block will be made.
         """
-        if block.update(block.fall):
-            forbidden.update(set(block.coords))
-            new_block = spawn_block()
-            new_block.update(new_block.fall)
-            return new_block
-        else:
-            return block
+        if not block.fall(): return False
+        
+        forbidden.update(set(block.coords))
+        new_block = spawn_block()
+        new_block.fall()
+        return new_block
+
     
     block = spawn_block()
     i = 0
@@ -72,17 +73,20 @@ def main_loop(stdscr: curses.window):
         c = screen.getch()
         if c == 3: break # Ctrl + c == break
         # * controls
-        if c == 115: block = fall(block)
+        if c == 115: 
+            g = fall(block)
+            if g: block = g
         
-        if c == 97:  block.update(lambda: block.shift("left"))
-        if c == 100: block.update(lambda: block.shift("right"))
-        if c == 106: block.update(lambda: block.turn("left"))  #left turn
-        if c == 108: block.update(lambda: block.turn("right")) #right turn
+        if c == 97:  block.shift("left")
+        if c == 100: block.shift("right")
+        if c == 106: block.turn("left") 
+        if c == 108: block.turn("right") 
         
         # * natural block falling
         i += 1
         if i == 55: 
-            block = fall(block)
+            g = fall(block)
+            if g: block = g
             i = 0
         time.sleep(0.01)
 

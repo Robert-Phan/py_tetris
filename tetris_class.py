@@ -2,53 +2,78 @@
 from __future__ import annotations
 import curses
 from dataclasses import dataclass
+from functools import update_wrapper
 from math import cos, sin
-from typing import Callable, NewType
+from typing import Any, Callable, NewType
 
 
 forbidden = set() # blocks on the surface, the sides, the floor, etc.
 Coordinates = NewType("Coordinates", list[tuple])
+
+def update(update_func: Callable[[Tetris, Any], Coordinates]):
+    """
+    Decorates the methods of `Tetris`, and returns `wrapper`
+    
+    ### `wrapper`
+    Takes The inputted function, and paints their resulting coordinates on screen,
+    thus representing a movement.
+    Will return True if the returned value is False, which indicates an illegal move.
+    """
+    
+    def wrapper(self: Tetris, *args):
+        new_coords = update_func(self, *args) 
+        
+        if not new_coords: 
+            return True
+        # * deletes previous block
+        for x, y in self.coords:
+            self.screen.addstr(y, x*2, "  ")
+        # * add in new coords
+        for x, y in new_coords:
+            self.screen.addstr(y, x*2, "  ", curses.color_pair(self.color))
+        self.coords = new_coords
+        
+    return wrapper
+    
 @dataclass
 class Tetris:
     '''
-    # Dataclass for Tetris piece
-    ## Arguments/fields
+    Dataclass for Tetris piece.
+    ### Arguments/fields
     - `coords` - list of x-y coordinates
     - `pivot_point` - x-y for points
     - `screen` - the screen used for update
     - `color` - color of piece.
     
-    ## Methods
-    ### "Movement methods"
-    These methods take `self.coords` and return a new list of coords, 
-    representing a change in postion.
-    They return `0` when the movement is invalid.
+    ### Methods
+    All of the following methods represent a movement of some sort. 
+    They return `False` when the movement is invalid.
+    They are decorated by the `update` function, so when called, 
+    will also update the screen.
+    
     They include:
     - `fall`
     - `shift`
     - `turn`
-    
-    ### `update`
-    `update` takes in a movement method and paints the new coords on screen.
-    When the result of the function is `False` (indicating the movement was invalid), 
-    it does nothing and returns `True`.
+
     '''
     coords: Coordinates
     pivot_point: int #pivot
     screen: curses.window
     color: int
     
-    # * these methods take self.coords and return and new set of coords
+    @update
     def fall(self) -> Coordinates:
-        """Movement method representing a downward movement."""
+        """Method representing a fall."""
         new_coords = [(x,y+1) for (x,y) in self.coords]
         if forbidden & set(new_coords):
             return False
         self.pivot_point = self.pivot_point[0], self.pivot_point[1]+1
         return new_coords
     
+    @update
     def shift(self, direction: str) -> Coordinates:
-        """Movement method representing a sideways movement.
+        """Method representing a sideways movement.
         Direction is determined using the `direction` argument."""
         sh = 1 if direction == "right" else -1
         new_coords =  [(x+sh,y) for (x,y) in self.coords]
@@ -56,9 +81,10 @@ class Tetris:
             return False
         self.pivot_point = self.pivot_point[0]+sh, self.pivot_point[1]
         return new_coords
-
+    
+    @update
     def turn(self, direction: str) -> Coordinates:
-        """Movement method representing a turn. Direction of turn
+        """Method representing a turn. Direction of turn
         depends on the value of `direction`."""
         radians = 1.57079632679 if direction == "left" else -1.57079632679
         cos_theta = cos(radians) #for calculations
@@ -73,22 +99,4 @@ class Tetris:
             new_y = sin_theta * (x - pivot_x) + cos_theta * (y - pivot_y) + pivot_y
             new_coords.append((round(new_x), round(new_y)))
         return False if forbidden & set(new_coords) else new_coords
-    
-    def update(self, update_func: Callable[[], Coordinates]):
-        """
-        Takes a function that produces new coordinates. 
-        Deletes the old coordinates, and paints new ones.
-        """
-        new_coords = update_func() 
-        
-        if not new_coords: 
-            return True
-        # * deletes previous block
-        for x, y in self.coords:
-            self.screen.addstr(y, x*2, "  ")
-        # * add in new coords
-        for x, y in new_coords:
-            self.screen.addstr(y, x*2, "  ", curses.color_pair(self.color))
-            
-        self.coords = new_coords
 
