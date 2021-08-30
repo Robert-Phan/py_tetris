@@ -16,38 +16,47 @@ def init_color():
     init_color_and_pair(55, 0, 1000, 1000)
     init_color_and_pair(56, 600, 0, 800)
 
+def tuples_to_dict(tu: set[tuple]):
+    di = {}
+    for a, b in tu:
+        di.setdefault(a, []).append(b)
+    return di
 
 def main_loop(stdscr: curses.window):
     """The main loop."""
     curses.curs_set(0)
-    max_y, max_x = stdscr.getmaxyx()
-    screen = curses.newpad(max_y+2, max_x)
-    screen.nodelay(True)
+    height, width = 34, 40
     
-    forbidden.update({(x, max_y+2) for x in range(max_x)})
-    forbidden.update({(-1, y) for y in range(max_y+2)})
-    forbidden.update({(max_x // 2, y) for y in range(max_y+2)})
+    curses.resize_term(height, width*2)
+    screen = curses.newpad(height+2, width)
+    screen.nodelay(True)
+    screen.border()
+    
+    border = {(x, height+1) for x in range(width)} | \
+        {(0, y) for y in range(height+2)} | {(width // 2-1, y) for y in range(height+2)}
+    forbidden.update(border)
 
     def spawn_block():
         """Selects a random template for a block, returns new block."""
         templates = [
-            ([(0,1), (1,1), (2,1), (2,0)], (1, 1), 50),     #orange L-shape
-            ([(0,1), (1,1), (2,1), (0,0)], (1, 1), 51),     #blue L-shape
-            ([(0,0), (1,0), (1,1), (2,1)], (1, 1), 52),     #red lightning
-            ([(0,1), (1,1), (1,0), (2,0)], (1,1), 53),      #green lightning
-            ([(0,0), (0,1), (1,0), (1,1)], (0.5, 0.5), 54), #cube
+            # ([(0,1), (1,1), (2,1), (2,0)], (1, 1), 50),     #orange L-shape
+            # ([(0,1), (1,1), (2,1), (0,0)], (1, 1), 51),     #blue L-shape
+            # ([(0,0), (1,0), (1,1), (2,1)], (1, 1), 52),     #red lightning
+            # ([(0,1), (1,1), (1,0), (2,0)], (1,1), 53),      #green lightning
+            # ([(0,0), (0,1), (1,0), (1,1)], (0.5, 0.5), 54), #cube
             ([(0,1), (1,1), (2,1), (3,1)], (1.5, 0.5), 55), #long
-            ([(0,0), (1,0), (2,0), (1,1)], (1, 0), 56)      #T-shape
+            # ([(0,0), (1,0), (2,0), (1,1)], (1, 0), 56)      #T-shape
         ]
         shape, pivot, color = random.choice(templates)
-        g = Tetris(shape, 
-                   pivot,
+        t = random.randint(0, width // 2 - 4)
+        g = Tetris([(x+t, y) for (x, y) in shape], 
+                   (pivot[0]+t, pivot[1]),
                    screen, 
                    color)
         return g
     
     init_color() # initiates color for the tetris pieces
-    
+    fallen_blocks = set()
     def fall(block: Tetris):
         """
         Function for falling block.
@@ -60,16 +69,22 @@ def main_loop(stdscr: curses.window):
         if not block.fall(): return False
         
         forbidden.update(set(block.coords))
+        fallen_blocks.update(set(block.coords))
         new_block = spawn_block()
         new_block.fall()
         return new_block
 
+    def check_for_line():
+        """Removes a full line when detected."""
+        g = tuples_to_dict({(y, x) for (x, y) in fallen_blocks})
+        for y, xs in g.items():
+            if sorted(xs) == list(range(1, 19)): return y
     
     block = spawn_block()
     i = 0
     # * loop 
     while True:
-        screen.refresh(2, 0, 0, 0, max_y-1, max_x-1)
+        screen.refresh(2, 0, 0, 0, height-1, width-1)
         c = screen.getch()
         if c == 3: break # Ctrl + c == break
         # * controls
@@ -88,6 +103,8 @@ def main_loop(stdscr: curses.window):
             g = fall(block)
             if g: block = g
             i = 0
+        
+        check_for_line()
         time.sleep(0.01)
 
 

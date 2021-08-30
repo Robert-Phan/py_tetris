@@ -2,7 +2,6 @@
 from __future__ import annotations
 import curses
 from dataclasses import dataclass
-from functools import update_wrapper
 from math import cos, sin
 from typing import Any, Callable, NewType
 
