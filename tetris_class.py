@@ -99,3 +99,7 @@ class Tetris:
             new_coords.append((round(new_x), round(new_y)))
         return False if forbidden & set(new_coords) else new_coords
 
+cum = {30, 31, 32, 33}
+ys = [29, 30, 33, 35]
+for y in ys:
+    print(all({(y < _y) for _y in cum}))

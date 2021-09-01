@@ -69,17 +69,37 @@ def main_loop(stdscr: curses.window):
         if not block.fall(): return False
         
         forbidden.update(set(block.coords))
-        fallen_blocks.update(set(block.coords))
+        fallen_blocks.update({(y, x, block.color) for (x, y) in block.coords})
+        
         new_block = spawn_block()
         new_block.fall()
         return new_block
 
     def check_for_line():
         """Removes a full line when detected."""
-        g = tuples_to_dict({(y, x) for (x, y) in fallen_blocks})
-        for y, xs in g.items():
-            if sorted(xs) == list(range(1, 19)): return y
-    
+        g = tuples_to_dict({(y, (x, c)) for (y, x, c) in fallen_blocks})
+
+        for y, x_c in g.items():
+            xs = {x for (x, c) in x_c}
+            if sorted(xs) == list(range(1, width // 2 - 1)): yield y
+                
+    def remove_line():
+        new_fallen_blocks, new_forbidden = set(), set()
+        _ys = set(check_for_line())
+        if _ys:
+            for y, x, c in fallen_blocks:
+                if all({(y < _y) for _y in _ys}):
+                    new_fallen_blocks.add((y, x, c))
+                    new_forbidden.add((x, y))
+                elif y not in _ys:
+                    new_fallen_blocks.add((y, x, c))
+                    new_forbidden.add((x, y))
+                else:
+                    screen.addstr(y, x*2, "  ")
+            
+            fallen_blocks.clear(); fallen_blocks.update(new_fallen_blocks)
+            forbidden.clear(); forbidden.update(new_forbidden | border)
+
     block = spawn_block()
     i = 0
     # * loop 
@@ -104,7 +124,7 @@ def main_loop(stdscr: curses.window):
             if g: block = g
             i = 0
         
-        check_for_line()
+        remove_line()   
         time.sleep(0.01)
 
 
