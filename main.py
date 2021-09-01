@@ -39,13 +39,13 @@ def main_loop(stdscr: curses.window):
     def spawn_block():
         """Selects a random template for a block, returns new block."""
         templates = [
-            # ([(0,1), (1,1), (2,1), (2,0)], (1, 1), 50),     #orange L-shape
-            # ([(0,1), (1,1), (2,1), (0,0)], (1, 1), 51),     #blue L-shape
-            # ([(0,0), (1,0), (1,1), (2,1)], (1, 1), 52),     #red lightning
-            # ([(0,1), (1,1), (1,0), (2,0)], (1,1), 53),      #green lightning
-            # ([(0,0), (0,1), (1,0), (1,1)], (0.5, 0.5), 54), #cube
+            ([(0,1), (1,1), (2,1), (2,0)], (1, 1), 50),     #orange L-shape
+            ([(0,1), (1,1), (2,1), (0,0)], (1, 1), 51),     #blue L-shape
+            ([(0,0), (1,0), (1,1), (2,1)], (1, 1), 52),     #red lightning
+            ([(0,1), (1,1), (1,0), (2,0)], (1,1), 53),      #green lightning
+            ([(0,0), (0,1), (1,0), (1,1)], (0.5, 0.5), 54), #cube
             ([(0,1), (1,1), (2,1), (3,1)], (1.5, 0.5), 55), #long
-            # ([(0,0), (1,0), (2,0), (1,1)], (1, 0), 56)      #T-shape
+            ([(0,0), (1,0), (2,0), (1,1)], (1, 0), 56)      #T-shape
         ]
         shape, pivot, color = random.choice(templates)
         t = random.randint(0, width // 2 - 4)
@@ -76,26 +76,36 @@ def main_loop(stdscr: curses.window):
         return new_block
 
     def check_for_line():
-        """Removes a full line when detected."""
-        g = tuples_to_dict({(y, (x, c)) for (y, x, c) in fallen_blocks})
-
-        for y, x_c in g.items():
+        """Returns the first full line from bottoms up when detected."""
+        g = list(tuples_to_dict({(y, (x, c)) for (y, x, c) in fallen_blocks}).items())
+        g.sort(reverse=True)
+        
+        for y, x_c in g:
             xs = {x for (x, c) in x_c}
-            if sorted(xs) == list(range(1, width // 2 - 1)): yield y
+            if sorted(xs) == list(range(1, width // 2 - 1)): return y
                 
     def remove_line():
+        """Removes detected line from `check_for_line`."""
         new_fallen_blocks, new_forbidden = set(), set()
-        _ys = set(check_for_line())
-        if _ys:
+        change_levi = []
+        _y = check_for_line()
+        if _y:
             for y, x, c in fallen_blocks:
-                if all({(y < _y) for _y in _ys}):
-                    new_fallen_blocks.add((y, x, c))
-                    new_forbidden.add((x, y))
-                elif y not in _ys:
+                if y < _y:
+                    change_levi.append((y, x, c))
+                elif y != _y:
                     new_fallen_blocks.add((y, x, c))
                     new_forbidden.add((x, y))
                 else:
                     screen.addstr(y, x*2, "  ")
+            # make all the blocks above a remove line fall down
+            change_levi.sort(reverse=True)
+            for y, x, c in change_levi:
+                if y > 1:
+                    screen.addstr(y, x*2, "  ")
+                    screen.addstr(y+1, x*2, "  ", curses.color_pair(c))
+                    new_fallen_blocks.add((y+1, x, c))
+                    new_forbidden.add((x, y+1))
             
             fallen_blocks.clear(); fallen_blocks.update(new_fallen_blocks)
             forbidden.clear(); forbidden.update(new_forbidden | border)
