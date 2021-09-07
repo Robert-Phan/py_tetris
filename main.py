@@ -3,6 +3,81 @@ import time
 import random
 from tetris_class import Tetris, forbidden
 
+class Start:
+    screen: curses.window
+    logo = [
+        "  _______   ______   _______   _____    _____    _____ ",
+        " |__   __| |  ____| |__   __| |  __ \  |_   _|  / ____|",
+        "    | |    | |__       | |    | |__) |   | |   | (___  ",
+        "    | |    |  __|      | |    |  _  /    | |    \___ \ ",
+        "    | |    | |____     | |    | | \ \   _| |_   ____) |",
+        "    |_|    |______|    |_|    |_|  \_\ |_____| |_____/ ",
+        "                                                       ",
+        ]
+    
+    def start_screen():
+        Start.screen = curses.newwin(Game.height, Game.width*2)
+        
+
+        for i, g in enumerate(Start.logo):
+            Start.screen.addstr(7+i, Game.width - len(g) // 2, g)
+        
+        curses.init_pair(10, curses.COLOR_BLACK, curses.COLOR_WHITE)
+        Start.print_middle(10 + len(Start.logo)+1, "1. PLAY", curses.color_pair(10))
+        Start.print_middle(10 + len(Start.logo)+2, "2. CONTROLS")
+        Start.print_middle(10 + len(Start.logo)+7, "Press 'Q' to exit game.")
+        
+    def __call__(self):
+        Start.start_screen()
+        gs = Start.logo
+        
+        pointer = 1
+        while True:
+            Start.screen.refresh()
+            c = Start.screen.getch()
+            
+            if c == 49:
+                pointer = 1               
+                Start.print_middle(10 + len(gs)+1, "1. PLAY", curses.color_pair(10))
+                Start.print_middle(10 + len(gs)+2, "2. CONTROLS")
+            if c == 50: 
+                pointer = 2
+                Start.print_middle(10 + len(gs)+1, "1. PLAY")
+                Start.print_middle(10 + len(gs)+2, "2. CONTROLS", curses.color_pair(10))
+            if c == 113: return True
+            if c == 10: 
+                if pointer == 1:
+                    break
+                elif pointer == 2:
+                    Start.show_controls()
+                    pointer = 1
+            
+        Start.screen.clear()
+        Start.screen.refresh()
+    
+    @staticmethod
+    def print_middle(y, string, *attrs):
+        Start.screen.addstr(y, Game.width - len(string) // 2, string, *attrs)
+    
+    def show_controls():
+        Start.screen.clear()
+        rules = [
+            "A: MOVE LEFT",
+            "D: MOVE RIGHT",
+            "J: ROTATE LEFT",
+            "L: ROTATE RIGHT",
+            "S: MOVE DOWN",
+            "CTRL+C: EXIT GAME"
+        ]
+        for i, r in enumerate(rules):
+            Start.screen.addstr(12+i, Game.width - len(rules[0]) // 2, r)
+        
+        Start.screen.addstr(Game.height - 1, 0, "PRESS ANY KEY TO GO BACK", curses.color_pair(10))
+        Start.screen.refresh()
+        Start.screen.getch()
+        Start.start_screen()
+        ...
+    
 
 class Game:
     
@@ -12,9 +87,12 @@ class Game:
 
     @staticmethod
     def main(stdscr: curses.window):
-        Game.screen = curses.newpad(Game.height+2, Game.width)
-        curses.curs_set(0)
         curses.resize_term(Game.height, Game.width*2)
+        curses.curs_set(0)
+        
+        if Game.start_screen(stdscr): return
+        Game.screen = curses.newpad(Game.height+2, Game.width)
+        
         Game.screen.nodelay(True)
         Game.screen.border()
         
@@ -149,7 +227,11 @@ class Game:
         g = any({y == Game.fail_line for (y, *_) in Game.fallen_blocks})
         if g:
             raise Exception
-        
-        
+
+    @staticmethod
+    def start_screen(screen: curses.window): 
+        return Start()()
+
+
 if __name__ == "__main__":
     curses.wrapper(Game.main)
